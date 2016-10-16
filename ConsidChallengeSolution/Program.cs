@@ -40,7 +40,7 @@ namespace ConsidChallengeSolution
                     t.Start();
                 }
             }
-            Console.WriteLine("No Duplicate Found");
+            Console.WriteLine("No Duplicates Found");
             time.Stop();
             return (time.ElapsedMilliseconds);
         }
