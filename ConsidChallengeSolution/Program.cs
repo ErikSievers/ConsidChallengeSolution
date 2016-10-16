@@ -13,6 +13,7 @@ namespace ConsidChallengeSolution
     {
         private static bool existsDuplicate;
         private static object locker;
+        private static long length;
 
         static void Main(string[] args)
         {
@@ -20,6 +21,7 @@ namespace ConsidChallengeSolution
             long totalTime = 0;
             for (int i = 0; i < noExec; i++) {
                 totalTime += doStuff();
+                Thread.Sleep(1000);
             }
             Console.WriteLine(totalTime / noExec);
             Console.ReadLine();
@@ -29,58 +31,53 @@ namespace ConsidChallengeSolution
         {
             Stopwatch time = Stopwatch.StartNew();
             int noOfThreads = 8;
-            string inputStr = @"D:\Temporary Downloads\Rgn01.txt";
-            FileInfo fi1 = new FileInfo(inputStr);
-            long fileLength = fi1.Length;
-            long offsetPerThread = fileLength / noOfThreads;
-            long length = fileLength / noOfThreads;
+            string inputStr = @"D:\Temporary Downloads\Rgn02.txt";
+            locker = new object();
+
+            FileInfo fil = new FileInfo(inputStr);
+            long fileLength = fil.Length;
+            length = fileLength / noOfThreads;
             BitArray bitArr = new BitArray(17576000);//The number of possible licence plates
 
-            int noOfTasksLeft = noOfThreads;
-         
-            using (var mmf = MemoryMappedFile.CreateFromFile(inputStr, FileMode.Open, "mmFile"))
+            int noOfRemainingTasks = noOfThreads;
+            Task[] tasks = new Task[noOfThreads];
+            MemoryMappedFile originalFile = MemoryMappedFile.CreateFromFile(inputStr, FileMode.Open, "mmFile");
+            CancellationToken cToken = new CancellationTokenSource().Token;
+
+            for (long i = 0; i < noOfThreads; i++)
             {
-                for (int i = 0; i < noOfThreads; i++)
+                long offset = i * length;
+                Task task = Task.Factory.StartNew
+                        (() => threadWorker(bitArr, offset, length));
+                tasks[i] = task;
+            }            
+            while (noOfRemainingTasks > 0)
+            {
+                Task.WaitAny(tasks);
+                if (existsDuplicate)
                 {
-                    Task task = Task.Factory.StartNew
-                        (() => threadWorker(bitArr, offsetPerThread * i, length, inputStr));
+                    Console.WriteLine("Duplicate");
+                    time.Stop();
+                    originalFile.Dispose();
+                    return (time.ElapsedMilliseconds);
                 }
-            }
-            while (noOfTasksLeft > 0) {
-                lock (locker)
-                {
-                    if (existsDuplicate)
-                    {
-                        Console.WriteLine("Duplicate");
-                        time.Stop();
-                        return (time.ElapsedMilliseconds);
-                    }
-                }
+                noOfRemainingTasks--;
             }
             Console.WriteLine("No Duplicates Found");
             time.Stop();
+            originalFile.Dispose();
             return (time.ElapsedMilliseconds);
         }
 
-        static void threadWorker(BitArray bitArr, long offset, long length, MemoryMappedFile mmf) {
-            var stream = mmf.CreateViewStream(offset, length);
+        static void threadWorker(BitArray bitArr, long offset, long length) {
+            MemoryMappedFile mmf = MemoryMappedFile.OpenExisting("mmFile", MemoryMappedFileRights.Read);
+            MemoryMappedViewStream stream = mmf.CreateViewStream(offset, length, MemoryMappedFileAccess.Read);
             byte[] plate = new byte[8];
             int val;
             for (int i = 0; i < length; i += 8)//Each line is 8 bytes
             {
+                
                 stream.Read(plate, 0, 8);
-                //val = plate[0] - 0x41;
-                //val *= 26;
-                //val += plate[1] - 0x41;
-                //val *= 26;
-                //val += plate[2] - 0x41;
-                //val *= 10;
-                //val += plate[3] - 0x30;
-                //val *= 10;
-                //val += plate[4] - 0x30;
-                //val *= 10;
-                //val += plate[5] - 0x30;
-
                 val = plate[0] * 676000;
                 val += plate[1] * 26000;
                 val += plate[2] * 1000;
@@ -88,24 +85,28 @@ namespace ConsidChallengeSolution
                 val += plate[4] * 10;
                 val += plate[5];
                 val -= 45700328;
-                if (bitArr.Get(val))
+                lock (locker)
                 {
-                    existsDuplicate = true;
-                    Monitor.Pulse(locker);
+                    if (bitArr.Get(val))
+                    {
+                        mmf.Dispose();
+                        stream.Dispose();
+                        existsDuplicate = true;
+                        return;
+                    }
+                    bitArr.Set(val, true);
                 }
-                bitArr.Set(val, true);
             }
-            Monitor.Pulse(locker);
+            mmf.Dispose();
+            stream.Dispose();
         }
 
-        static void calcPlate(int val) {
-            Console.Write((char)val / 676000);
-            Console.Write((char)(val % 676000)/26000);
-            Console.Write((char)(val % 26000) / 1000);
-            Console.Write((char)(val % 1000) / 100);
-            Console.Write((char)(val % 100) / 10);
-            Console.Write((char)(val % 10));
-            Console.WriteLine("");
+        static void calcPlate(byte[] plate) {
+            foreach(byte b in plate)
+            {
+                Console.Write((char)b);
+            }
+            Console.WriteLine();
         }
     }
 }
