@@ -21,7 +21,7 @@ namespace ConsidChallengeSolution
         static void Main(string[] args)
         {
             times = new long[8];
-            int noExec = 50;
+            int noExec = 20;
             long totalTime = 0;
             for (int i = 0; i < noExec; i++) {
                 totalTime += doStuff();
@@ -47,16 +47,32 @@ namespace ConsidChallengeSolution
             int noOfRemainingTasks = noOfThreads;
             Task[] tasks = new Task[noOfThreads];
             MemoryMappedFile originalFile = MemoryMappedFile.CreateFromFile(inputStr, FileMode.Open, "mmFile");
-            for(int i = 0; i < noOfThreads; i++){
+            Parallel.For(0, noOfThreads, i =>
+            {
                 long offset = i * length;
                 Task task = Task.Factory.StartNew
                     (() => threadWorker(bitArr, offset, length), TaskCreationOptions.None);
                 tasks[i] = task;
-            }
+            });
+            //while (noOfRemainingTasks > 0)
+            //{
+            //    Task.WaitAny(tasks);
+            //    if (existsDuplicate)
+            //    {
+            //        Console.WriteLine("Dubbletter");
+            //        time.Stop();
+            //        originalFile.Dispose();
+            //        return (time.ElapsedMilliseconds);
+            //    }
+            //    noOfRemainingTasks--;
+            //}
             Task.WaitAll(tasks);
             int sum = 0;
             object sumLock = sum;
             int j = bitArr.Count / noOfThreads;
+            //Parallel.For(0, noOfThreads,
+            //    i =>
+            //    {
             for (int index = 0; index < noOfThreads; index++)
             {
                 int count = 0;
@@ -76,10 +92,13 @@ namespace ConsidChallengeSolution
                 });
                 tasks[index] = task;
             }
+
+            //});
             Task.WaitAll(tasks);
             if (sum != fileLength / 8)
             {
                 Console.WriteLine("Dubbletter");
+                Console.WriteLine(sum);
                 time.Stop();
                 originalFile.Dispose();
                 return (time.ElapsedMilliseconds);
