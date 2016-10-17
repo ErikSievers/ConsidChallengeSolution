@@ -7,6 +7,7 @@ using System.Threading;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Timers;
+using System.Collections.Specialized;
 
 namespace ConsidChallengeSolution
 {
@@ -25,7 +26,7 @@ namespace ConsidChallengeSolution
             //MemoryMappedFile originalFile = MemoryMappedFile.CreateFromFile(inputStr, FileMode.Open, "mmFile");
             //s.Stop();
             times = new long[8];
-            int noExec = 50;
+            int noExec = 10;
             long totalTime = 0;
             //totalTime = s.ElapsedMilliseconds*noExec;
             for (int i = 0; i < noExec; i++) {
@@ -48,7 +49,18 @@ namespace ConsidChallengeSolution
             FileInfo fil = new FileInfo(inputStr);
             long fileLength = fil.Length;
             length = fileLength / noOfThreads;
+            BitArray[,,] bArrArr = new BitArray[26, 26, 1000];
+            for (int i1 = 0; i1 < 26; i1++)
+            {
+                for (int i2 = 0; i2 < 26; i2++)
+                {
+                    for (int i3 = 0; i3 < 1000; i3++)
+                    {
+                        bArrArr[i1, i2, i3] = new BitArray(26);
+                    }
 
+                }
+            }
             BitArray bitArr = new BitArray(17576000);
             int noOfRemainingTasks = noOfThreads;
             Task[] tasks = new Task[noOfThreads];
@@ -57,7 +69,7 @@ namespace ConsidChallengeSolution
             {
                 long offset = i * length;
                 Task task = Task.Factory.StartNew
-                    (() => threadWorker(bitArr, offset, length), TaskCreationOptions.None);
+                    (() => threadWorker(bArrArr, offset, length), TaskCreationOptions.None);
                 tasks[i] = task;
             });
             //while (noOfRemainingTasks > 0)
@@ -73,15 +85,33 @@ namespace ConsidChallengeSolution
             //    noOfRemainingTasks--;
             //}
             int[] k = new int[noOfThreads];
-            int j = bitArr.Count / noOfThreads;
+            int[] j = new int[noOfThreads];
+            int j1 = 26;
+            for (int i = 0; i < noOfThreads; i++) {
+                j[i] = j1 / noOfThreads;
+                if (j1 % noOfThreads > 0)
+                {
+                    j1--;
+                    j[i]++;
+                }
+
+            }
             Task.WaitAll(tasks);
             Parallel.For(0, noOfThreads,
                 index =>
                 {
-                    for (int m = 0; m < j; m++)
+                    for (int m = 0; m < j[index]; m++)
                     {
-                        if (bitArr.Get(index * j + m))
-                            k[index]++;
+                        for (int n = 0; n < 26; n++)
+                        {
+                            for(int o = 0; o < 1000; o++)
+                            {
+                                for (int p = 0; p < 26; p++) {
+                                    if (bArrArr[m, n, o].Get(p))
+                                        k[index]++;
+                                }
+                            }
+                        }
                     }
                 }
             );
@@ -103,10 +133,10 @@ namespace ConsidChallengeSolution
             return (time.ElapsedMilliseconds);
         }
 
-        static void threadWorker(BitArray bitArr, long offset, long length) {
-            BitArray ba = (BitArray)bitArr.Clone();
+        static void threadWorker(BitArray[,,] bitArr, long offset, long length) {
+            //BitArray ba = (BitArray)bitArr.Clone();
             //BitArray ba = new BitArray(bitArr.Length);
-            int val;
+            //int val;
             byte[] plate = new byte[length];
             //Stopwatch t = Stopwatch.StartNew();
             //Stopwatch s = Stopwatch.StartNew();
@@ -121,13 +151,14 @@ namespace ConsidChallengeSolution
             //Stopwatch u = Stopwatch.StartNew();
             for (int i = 0; i < length; i += 8)//Each line is 8 bytes
             {
-                val = plate[i+0] * 676000;
-                val += plate[i+1] * 26000;
-                val += plate[i+2] * 1000;
-                val += plate[i+3] * 100;
-                val += plate[i+4] * 10;
-                val += plate[i+5];
-                val -= 45700328;
+                //val = plate[i+0] * 676000;
+                //val += plate[i+1] * 26000;
+                //val += plate[i+2] * 1000;
+                //val += plate[i+3] * 100;
+                //val += plate[i+4] * 10;
+                //val += plate[i+5];
+                //val -= 45700328;
+                //ba.Set(val, true);
                 //lock (bitArr)
                 //{
                 //    if (bitArr.Get(val))
@@ -139,17 +170,25 @@ namespace ConsidChallengeSolution
                 //    }
                 //    bitArr.Set(val, true);
                 //}
-                ba.Set(val, true);
+                int v1, v2, v3, v4, v5, v0;
+                v1 = plate[i + 1]-65;
+                v2 = plate[i + 2]-65;
+                v3 = (plate[i + 3]-48)*100;
+                v4 = (plate[i + 4] - 48) * 10;
+                v5 = (plate[i + 5] - 48);
+                v0 = plate[i]-65;
+                
+                bitArr[v1, v2, v3+v4+v5].Set(v0, true);
             }
             mmf.Dispose();
             stream.Dispose();
             //u.Stop();
             //times[5] += u.ElapsedMilliseconds;
             //s = Stopwatch.StartNew();
-            lock (bitArr)
-            {
-                bitArr.Or(ba);
-            }
+            //lock (bitArr)
+            //{
+            //    bitArr.Or(ba);
+            //}
             //s.Stop();
             //t.Stop();
             //times[2] += s.ElapsedMilliseconds;
