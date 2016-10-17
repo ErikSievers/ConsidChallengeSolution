@@ -147,14 +147,6 @@ namespace ConsidChallengeSolution
             }
         }
 
-
-        static void block(BitArray bitArr, BitArray ba) {
-            lock (bitArr)
-            {
-                bitArr.Or(ba);
-            }
-        }
-
         static void calcPlate(byte[] plate) {
             foreach(byte b in plate)
             {
