@@ -20,14 +20,9 @@ namespace ConsidChallengeSolution
 
         static void Main(string[] args)
         {
-            //Stopwatch s = Stopwatch.StartNew();
-            //string inputStr = @"D:\Temporary Downloads\Rgn02.txt";
-            //MemoryMappedFile originalFile = MemoryMappedFile.CreateFromFile(inputStr, FileMode.Open, "mmFile");
-            //s.Stop();
             times = new long[8];
             int noExec = 20;
             long totalTime = 0;
-            //totalTime = s.ElapsedMilliseconds*noExec;
             for (int i = 0; i < noExec; i++) {
                 totalTime += doStuff();
             }
@@ -59,39 +54,51 @@ namespace ConsidChallengeSolution
                     (() => threadWorker(bitArr, offset, length), TaskCreationOptions.None);
                 tasks[i] = task;
             });
-            while (noOfRemainingTasks > 0)
-            {
-                Task.WaitAny(tasks);
-                if (existsDuplicate)
-                {
-                    Console.WriteLine("Dubbletter");
-                    time.Stop();
-                    originalFile.Dispose();
-                    return (time.ElapsedMilliseconds);
-                }
-                noOfRemainingTasks--;
-            }
-            int[] k = new int[noOfThreads];
-            int j = bitArr.Count / noOfThreads;
+            //while (noOfRemainingTasks > 0)
+            //{
+            //    Task.WaitAny(tasks);
+            //    if (existsDuplicate)
+            //    {
+            //        Console.WriteLine("Dubbletter");
+            //        time.Stop();
+            //        originalFile.Dispose();
+            //        return (time.ElapsedMilliseconds);
+            //    }
+            //    noOfRemainingTasks--;
+            //}
             Task.WaitAll(tasks);
-            Parallel.For(0, noOfThreads,
-                index =>
-                {
-                    for (int m = 0; m < j; m++)
-                    {
-                        if (bitArr.Get(index * j + m))
-                            k[index]++;
-                    }
-                }
-            );
             int sum = 0;
-            foreach(int k1 in k)
+            object sumLock = sum;
+            int j = bitArr.Count / noOfThreads;
+            //Parallel.For(0, noOfThreads,
+            //    i =>
+            //    {
+            for (int index = 0; index < noOfThreads; index++)
             {
-                sum += k1;
+                int count = 0;
+                int end = j * (index + 1);
+                Task task = Task.Factory.StartNew
+                (() =>
+                {
+                    for (int m = end-j; m < end; m++)
+                    {
+                        if (bitArr.Get(m))
+                            count++;
+                    }
+                    lock (sumLock)
+                    {
+                        sum += count;
+                    }
+                });
+                tasks[index] = task;
             }
+
+            //});
+            Task.WaitAll(tasks);
             if (sum != fileLength / 8)
             {
                 Console.WriteLine("Dubbletter");
+                Console.WriteLine(sum);
                 time.Stop();
                 originalFile.Dispose();
                 return (time.ElapsedMilliseconds);
@@ -107,17 +114,9 @@ namespace ConsidChallengeSolution
             //BitArray ba = new BitArray(bitArr.Length);
             int val;
             byte[] plate = new byte[length];
-            //Stopwatch t = Stopwatch.StartNew();
-            //Stopwatch s = Stopwatch.StartNew();
             MemoryMappedFile mmf = MemoryMappedFile.OpenExisting("mmFile");
             MemoryMappedViewStream stream = mmf.CreateViewStream(offset, length, MemoryMappedFileAccess.Read);
-            //s.Stop();
-            //times[0] += s.ElapsedMilliseconds;
-            //s = Stopwatch.StartNew();
             stream.Read(plate, 0, (int)length);
-            //s.Stop();
-            //times[1] += s.ElapsedMilliseconds;
-            //Stopwatch u = Stopwatch.StartNew();
             for (int i = 0; i < length; i += 8)//Each line is 8 bytes
             {
                 val = plate[i+0] * 676000;
@@ -142,17 +141,10 @@ namespace ConsidChallengeSolution
             }
             mmf.Dispose();
             stream.Dispose();
-            //u.Stop();
-            //times[5] += u.ElapsedMilliseconds;
-            //s = Stopwatch.StartNew();
             lock (bitArr)
             {
                 bitArr.Or(ba);
             }
-            //s.Stop();
-            //t.Stop();
-            //times[2] += s.ElapsedMilliseconds;
-            //times[4] += t.ElapsedMilliseconds;
         }
 
 
