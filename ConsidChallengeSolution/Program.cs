@@ -21,7 +21,7 @@ namespace ConsidChallengeSolution
             long totalTime = 0;
             for (int i = 0; i < noExec; i++) {
                 totalTime += doStuff();
-                Thread.Sleep(1000);
+                //Thread.Sleep(1000);
             }
             Console.WriteLine(totalTime / noExec);
             Console.ReadLine();
@@ -72,20 +72,20 @@ namespace ConsidChallengeSolution
         static void threadWorker(BitArray bitArr, long offset, long length) {
             MemoryMappedFile mmf = MemoryMappedFile.OpenExisting("mmFile", MemoryMappedFileRights.Read);
             MemoryMappedViewStream stream = mmf.CreateViewStream(offset, length, MemoryMappedFileAccess.Read);
-            byte[] plate = new byte[8];
+            byte[] plate = new byte[length];
             int val;
             for (int i = 0; i < length; i += 8)//Each line is 8 bytes
             {
                 
-                stream.Read(plate, 0, 8);
-                val = plate[0] * 676000;
-                val += plate[1] * 26000;
-                val += plate[2] * 1000;
-                val += plate[3] * 100;
-                val += plate[4] * 10;
-                val += plate[5];
+                stream.Read(plate, 0, (int)length);
+                val = plate[i] * 676000;
+                val += plate[i+1] * 26000;
+                val += plate[i+2] * 1000;
+                val += plate[i+3] * 100;
+                val += plate[i+4] * 10;
+                val += plate[i+5];
                 val -= 45700328;
-                lock (locker)
+                lock (bitArr)
                 {
                     if (bitArr.Get(val))
                     {
