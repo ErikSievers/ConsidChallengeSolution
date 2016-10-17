@@ -91,7 +91,7 @@ namespace ConsidChallengeSolution
         }
 
         static void threadWorker(BitArray bitArr, long offset, long length) {
-            BitArray ba = (BitArray)bitArr.Clone();
+            bool[] boolArr = new bool[17576000];
             //BitArray ba = new BitArray(bitArr.Length);
             int val;
             byte[] plate = new byte[length];
@@ -118,10 +118,11 @@ namespace ConsidChallengeSolution
                 //    }
                 //    bitArr.Set(val, true);
                 //}
-                ba.Set(val, true);
+                boolArr[val] = true;
             }
             mmf.Dispose();
             stream.Dispose();
+            BitArray ba = new BitArray(boolArr);
             lock (bitArr)
             {
                 bitArr.Or(ba);
