@@ -25,7 +25,7 @@ namespace ConsidChallengeSolution
             //MemoryMappedFile originalFile = MemoryMappedFile.CreateFromFile(inputStr, FileMode.Open, "mmFile");
             //s.Stop();
             times = new long[8];
-            int noExec = 20;
+            int noExec = 50;
             long totalTime = 0;
             //totalTime = s.ElapsedMilliseconds*noExec;
             for (int i = 0; i < noExec; i++) {
@@ -42,12 +42,13 @@ namespace ConsidChallengeSolution
         static long doStuff()
         {
             Stopwatch time = Stopwatch.StartNew();
-            int noOfThreads = 4;
+            int noOfThreads = 6;
             locker = new object();
             string inputStr = @"D:\Temporary Downloads\Rgn02.txt";
             FileInfo fil = new FileInfo(inputStr);
             long fileLength = fil.Length;
             length = fileLength / noOfThreads;
+
             BitArray bitArr = new BitArray(17576000);
             int noOfRemainingTasks = noOfThreads;
             Task[] tasks = new Task[noOfThreads];
@@ -59,18 +60,18 @@ namespace ConsidChallengeSolution
                     (() => threadWorker(bitArr, offset, length), TaskCreationOptions.None);
                 tasks[i] = task;
             });
-            while (noOfRemainingTasks > 0)
-            {
-                Task.WaitAny(tasks);
-                if (existsDuplicate)
-                {
-                    Console.WriteLine("Dubbletter");
-                    time.Stop();
-                    originalFile.Dispose();
-                    return (time.ElapsedMilliseconds);
-                }
-                noOfRemainingTasks--;
-            }
+            //while (noOfRemainingTasks > 0)
+            //{
+            //    Task.WaitAny(tasks);
+            //    if (existsDuplicate)
+            //    {
+            //        Console.WriteLine("Dubbletter");
+            //        time.Stop();
+            //        originalFile.Dispose();
+            //        return (time.ElapsedMilliseconds);
+            //    }
+            //    noOfRemainingTasks--;
+            //}
             int[] k = new int[noOfThreads];
             int j = bitArr.Count / noOfThreads;
             Task.WaitAll(tasks);
