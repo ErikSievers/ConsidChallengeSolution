@@ -12,107 +12,59 @@ namespace ConsidChallengeSolution
 {
     class Program
     {
-        private static bool existsDuplicate;
-        private static object locker;
+        private static bool test = true;
         private static long length;
+        private static int noOfTasks = 8;
         private volatile static long[] times;
-        private static Stopwatch[] timers;
 
         static void Main(string[] args)
         {
-            times = new long[8];
-            int noExec = 20;
-            long totalTime = 0;
-            for (int i = 0; i < noExec; i++) {
-                totalTime += doStuff();
+            if (test)
+            {
+                times = new long[8];
+                int noExec = 20;
+                long totalTime = 0;
+                for (int i = 0; i < noExec; i++)
+                {
+                    doStuff(@"D:\Temporary Downloads\Rgn02.txt");
+                }
+                Console.WriteLine("Total time was: " + (totalTime / noExec));
+                Console.ReadLine();
             }
-            Console.WriteLine("Total time was: " + (totalTime / noExec));
-            for (int i = 0; i < times.Length; i++) {
-                if (times[i] > 0)
-                    Console.WriteLine("Timer " + i + " averaged " + times[i] / noExec + " which is " + times[i] / totalTime + " of the total execution time");
-            }
-            Console.ReadLine();
         }
 
-        static long doStuff()
+        static void doStuff(string inputStr)
         {
-            Stopwatch time = Stopwatch.StartNew();
-            int noOfThreads = 4;
-            locker = new object();
-            string inputStr = @"D:\Temporary Downloads\Rgn02.txt";
             FileInfo fil = new FileInfo(inputStr);
             long fileLength = fil.Length;
-            length = fileLength / noOfThreads;
+            length = fileLength / noOfTasks;
             BitArray bitArr = new BitArray(17576000);
-            int noOfRemainingTasks = noOfThreads;
-            Task[] tasks = new Task[noOfThreads];
+            Task[] tasks = new Task[noOfTasks];
             MemoryMappedFile originalFile = MemoryMappedFile.CreateFromFile(inputStr, FileMode.Open, "mmFile");
-            Parallel.For(0, noOfThreads, i =>
+            Parallel.For(0, noOfTasks, i =>
             {
                 long offset = i * length;
                 Task task = Task.Factory.StartNew
                     (() => threadWorker(bitArr, offset, length), TaskCreationOptions.None);
                 tasks[i] = task;
             });
-            //while (noOfRemainingTasks > 0)
-            //{
-            //    Task.WaitAny(tasks);
-            //    if (existsDuplicate)
-            //    {
-            //        Console.WriteLine("Dubbletter");
-            //        time.Stop();
-            //        originalFile.Dispose();
-            //        return (time.ElapsedMilliseconds);
-            //    }
-            //    noOfRemainingTasks--;
-            //}
             Task.WaitAll(tasks);
-            int sum = 0;
-            object sumLock = sum;
-            int j = bitArr.Count / noOfThreads;
-            //Parallel.For(0, noOfThreads,
-            //    i =>
-            //    {
-            for (int index = 0; index < noOfThreads; index++)
-            {
-                int count = 0;
-                int end = j * (index + 1);
-                Task task = Task.Factory.StartNew
-                (() =>
-                {
-                    for (int m = end-j; m < end; m++)
-                    {
-                        if (bitArr.Get(m))
-                            count++;
-                    }
-                    lock (sumLock)
-                    {
-                        sum += count;
-                    }
-                });
-                tasks[index] = task;
-            }
-
-            //});
-            Task.WaitAll(tasks);
+            int sum = GetCardinality(bitArr);
             if (sum != fileLength / 8)
             {
                 Console.WriteLine("Dubbletter");
-                Console.WriteLine(sum);
-                time.Stop();
-                originalFile.Dispose();
-                return (time.ElapsedMilliseconds);
             }
-            Console.WriteLine("Ej Dubblett");
-            time.Stop();
+            else
+            {
+                Console.WriteLine("Ej Dubblett");
+            }
             originalFile.Dispose();
-            return (time.ElapsedMilliseconds);
+            return;
         }
 
         static void threadWorker(BitArray bitArr, long offset, long length) {
-            BitArray ba = (BitArray)bitArr.Clone();
-            //BitArray ba = new BitArray(bitArr.Length);
             int val;
+            BitArray ba = new BitArray(bitArr.Length);
             byte[] plate = new byte[length];
             MemoryMappedFile mmf = MemoryMappedFile.OpenExisting("mmFile");
             MemoryMappedViewStream stream = mmf.CreateViewStream(offset, length, MemoryMappedFileAccess.Read);
@@ -126,17 +78,6 @@ namespace ConsidChallengeSolution
                 val += plate[i+4] * 10;
                 val += plate[i+5];
                 val -= 45700328;
-                //lock (bitArr)
-                //{
-                //    if (bitArr.Get(val))
-                //    {
-                //        mmf.Dispose();
-                //        stream.Dispose();
-                //        existsDuplicate = true;
-                //        return;
-                //    }
-                //    bitArr.Set(val, true);
-                //}
                 ba.Set(val, true);
             }
             mmf.Dispose();
@@ -145,6 +86,33 @@ namespace ConsidChallengeSolution
             {
                 bitArr.Or(ba);
             }
+        }
+
+        //From Ronny Heuschkel on stackoverflow
+        public static Int32 GetCardinality(BitArray bitArray)
+        {
+            Int32[] ints = new Int32[(bitArray.Count >> 5) + 1];
+
+            bitArray.CopyTo(ints, 0);
+
+            Int32 count = 0;
+
+            // fix for not truncated bits in last integer that may have been set to true with SetAll()
+            ints[ints.Length - 1] &= ~(-1 << (bitArray.Count % 32));
+
+            for (Int32 i = 0; i < ints.Length; i++)
+            {
+                Int32 c = ints[i];
+                // magic (http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel)
+                unchecked
+                {
+                    c = c - ((c >> 1) & 0x55555555);
+                    c = (c & 0x33333333) + ((c >> 2) & 0x33333333);
+                    c = ((c + (c >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
+                }
+                count += c;
+            }
+            return count;
         }
 
         static void calcPlate(byte[] plate) {
