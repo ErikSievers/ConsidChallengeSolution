@@ -12,40 +12,22 @@ namespace ConsidChallengeSolution
 {
     class Program
     {
-        private static bool test = true;
         private static long length;
         private static int noOfTasks = 8;
-        private volatile static long[] times;
 
         static void Main(string[] args)
         {
-            if (test)
-            {
-                times = new long[8];
-                int noExec = 20;
-                long totalTime = 0;
-                for (int i = 0; i < noExec; i++)
-                {
-                    doStuff(@"D:\Temporary Downloads\Rgn02.txt");
-                }
-                Console.WriteLine("Total time was: " + (totalTime / noExec));
-                Console.ReadLine();
-            }
-        }
-
-        static void doStuff(string inputStr)
-        {
-            FileInfo fil = new FileInfo(inputStr);
+            FileInfo fil = new FileInfo(args[0]);
             long fileLength = fil.Length;
             length = fileLength / noOfTasks;
             BitArray bitArr = new BitArray(17576000);
             Task[] tasks = new Task[noOfTasks];
-            MemoryMappedFile originalFile = MemoryMappedFile.CreateFromFile(inputStr, FileMode.Open, "mmFile");
+            MemoryMappedFile originalFile = MemoryMappedFile.CreateFromFile(args[0], FileMode.Open, "mmFile");
             Parallel.For(0, noOfTasks, i =>
             {
                 long offset = i * length;
                 Task task = Task.Factory.StartNew
-                    (() => threadWorker(bitArr, offset, length), TaskCreationOptions.None);
+                    (() => worker(bitArr, offset, length), TaskCreationOptions.None);
                 tasks[i] = task;
             });
             Task.WaitAll(tasks);
@@ -59,10 +41,9 @@ namespace ConsidChallengeSolution
                 Console.WriteLine("Ej Dubblett");
             }
             originalFile.Dispose();
-            return;
-        }
+        }        
 
-        static void threadWorker(BitArray bitArr, long offset, long length) {
+        static void worker(BitArray bitArr, long offset, long length) {
             int val;
             BitArray ba = new BitArray(bitArr.Length);
             byte[] plate = new byte[length];
